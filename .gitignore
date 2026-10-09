@@ -1,0 +1,13 @@
+#all of the vscode and python stuff
+.vscode/
+.venv/
+__pycache__/
+.states
+*.db
+assets/external/
+.web
+*.py[cod]
+.web/
+
+#the env
+.env

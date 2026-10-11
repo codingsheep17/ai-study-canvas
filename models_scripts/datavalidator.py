@@ -35,7 +35,6 @@ def extract_text(file_path: str, file_name: str) -> str:
                     extracted_text += page_text + "\n"
                     
         # 2. Vision OCR Fallback (For Images OR Scanned/Image-based PDFs)
-        # If PyPDF2 found no text, this block will execute and Gemini will take over.
         if not extracted_text.strip():
             if extension == '.pdf':
                 print(f"[STEP 1 INFO] PyPDF2 found no text in {file_name}. Treating as scanned PDF...")
@@ -46,38 +45,46 @@ def extract_text(file_path: str, file_name: str) -> str:
                 os.getenv("ANSA_GEMINI_KEY")
             ]
             
+            # Models listed in priority order: latest 3.8-flash first, then 2.5-flash fallback
+            models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash"]
+            
             success = False
             for key in gemini_keys:
                 if not key:
                     continue
-                try:
-                    client = genai.Client(api_key=key)
-                    
-                    # If it's a PDF, send raw bytes. If it's an image, send the PIL object.
-                    if extension == '.pdf':
-                        doc_bytes = open(file_path, "rb").read()
-                        file_payload = types.Part.from_bytes(data=doc_bytes, mime_type='application/pdf')
-                    else:
-                        file_payload = Image.open(file_path)
-
-                    response = client.models.generate_content(
-                        model="gemini-3.8-flash",
-                        contents=[
-                            file_payload, 
-                            "Extract all readable text from this document perfectly. Output strictly the text without commentary."
-                        ]
-                    )
-                    extracted_text += (response.text or "") + "\n"
-                    success = True
-                    break 
+                client = genai.Client(api_key=key)
                 
-                except Exception as e:
-                    print(f"[STEP 1 WARNING] Vision OCR failed with key. Error: {e}. Trying next...")
-                    time.sleep(1.5) 
-                    continue
+                # Format payload once
+                if extension == '.pdf':
+                    doc_bytes = open(file_path, "rb").read()
+                    file_payload = types.Part.from_bytes(data=doc_bytes, mime_type='application/pdf')
+                else:
+                    file_payload = Image.open(file_path)
+
+                # Try primary model, then fall back to backup model
+                for model_name in models_to_try:
+                    try:
+                        print(f"[STEP 1 INFO] Attempting OCR with model: {model_name}")
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=[
+                                file_payload, 
+                                "Extract all readable text from this document perfectly. Output strictly the text without commentary."
+                            ]
+                        )
+                        extracted_text += (response.text or "") + "\n"
+                        success = True
+                        break 
+                    except Exception as model_err:
+                        print(f"[STEP 1 WARNING] Model {model_name} failed on key. Error: {model_err}. Trying fallback model...")
+                        time.sleep(1)
+                        continue
+
+                if success:
+                    break
                     
             if not success:
-                raise RuntimeError("All Gemini keys failed or hit rate limits during text extraction.")
+                raise RuntimeError("All Gemini keys and model fallbacks failed or hit rate limits during text extraction.")
 
         if not extracted_text.strip():
             raise ValueError(f"No readable text found in {file_name}. Please upload clear study material.")

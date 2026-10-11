@@ -1,29 +1,7 @@
-import React, { useContext, useMemo, useReducer, useRef, useState, createElement, useEffect, useLayoutEffect } from "react"
+import { useContext, useMemo, useReducer, useRef, useState, createElement, useEffect, useLayoutEffect } from "react"
 import { applyDelta, ReflexEvent, hydrateClientStorage, useEventLoop, refs } from "$/utils/state"
 import { ColorModeContext, UploadFilesContext, DispatchContext, EventLoopContext, getStateContext, registerApp, eventLoop } from "$/utils/context-registry"
 import { jsx } from "@emotion/react";
-
-// Disable React dev-build owner-stack capture: the per-element Error()
-// dominates dev-mode render CPU on large pages. Costs owner frames in
-// `React.captureOwnerStack()`; set REFLEX_REACT_OWNER_STACKS=1 to restore.
-// Full context: https://github.com/reflex-dev/reflex/pull/6905
-if (typeof window !== "undefined") {
-  try {
-    const reactInternals =
-      React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
-    const ownerStackCounterKey = "recentlyCreatedOwnerStacks";
-    if (
-      reactInternals &&
-      typeof reactInternals[ownerStackCounterKey] === "number"
-    ) {
-      Object.defineProperty(reactInternals, ownerStackCounterKey, {
-        get: () => 1e9,
-        set: () => {},
-        configurable: true,
-      });
-    }
-  } catch {}
-}
 
 export { ColorModeContext, UploadFilesContext, DispatchContext, EventLoopContext };
 export const initialState = {"reflex___state____state": {"is_hydrated_rx_state_": false, "rx_router_headers_rx_state_": {"host": "", "origin": "", "upgrade": "", "connection": "", "cookie": "", "pragma": "", "cache_control": "", "user_agent": "", "sec_websocket_version": "", "sec_websocket_key": "", "sec_websocket_extensions": "", "accept_encoding": "", "accept_language": "", "raw_headers": {}}, "rx_router_page_rx_state_": {"host": "", "path": "", "raw_path": "", "full_path": "", "full_raw_path": "", "params": {}}, "rx_router_route_id_rx_state_": "", "rx_router_session_rx_state_": {"client_token": "", "client_ip": "", "session_id": ""}, "rx_router_url_rx_state_": {"scheme": "", "netloc": "", "origin": "://", "path": "", "query": "", "query_parameters": {}, "fragment": "", "href": ""}}, "reflex___state____state.ai_study_canvas___home____state": {"ai_notes_rx_state_": [], "ai_quiz_rx_state_": [], "answers_rx_state_": ["", "", "", "", ""], "error_message_rx_state_": "", "is_processing_rx_state_": false, "level_rx_state_": "University student", "loading_text_rx_state_": "", "notes_rx_state_": [], "query_rx_state_": "", "rendered_img_rx_state_": "", "show_notes_rx_state_": false, "show_quiz_rx_state_": false, "submitted_rx_state_": false, "topic_rx_state_": "Your Uploaded Topic", "uploaded_name_rx_state_": ""}, "reflex___state____state.reflex___istate___shared____shared_state_base_internal": {}, "reflex___state____state.reflex___state____frontend_event_exception_state": {}, "reflex___state____state.reflex___state____on_load_internal_state": {}, "reflex___state____state.reflex___state____update_vars_internal_state": {}}
@@ -67,7 +45,7 @@ export const initialEvents = () => [
 ]
     
 
-export const isDevMode = true;
+export const isDevMode = false;
 
 // The static runtime reads these through the registry, so this module is the
 // only one Vite re-executes when they change.

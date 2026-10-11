@@ -5,9 +5,7 @@ __pycache__/
 .states
 *.db
 assets/external/
-.web
 *.py[cod]
-.web/
 
 #the env
 .env

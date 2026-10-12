@@ -130,10 +130,12 @@ class State(rx.State):
             self.loading_text = "Rendering flowchart diagram... (Almost done!)"
             yield
             await asyncio.sleep(0.1)
-
+            
             # Generate the flowchart and get the unique dynamic filename
             new_filename = generate_image(report.image_prompt)
-            self.rendered_img = f"/{new_filename}"
+            
+            # CRITICAL FIX: Fetch the image from the dynamic upload route
+            self.rendered_img = rx.get_upload_url(new_filename)
 
         except Exception as e:
             print(f"Pipeline Error: {e}")

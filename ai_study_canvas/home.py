@@ -131,9 +131,8 @@ class State(rx.State):
             yield
             await asyncio.sleep(0.1)
             
-            # Generate the flowchart in assets/ and update the state path
-            new_filename = generate_image(report.image_prompt)
-            self.rendered_img = f"/{new_filename}"
+            # generate_image now returns a direct HTTPS URL
+            self.rendered_img = generate_image(report.image_prompt)
 
         except Exception as e:
             print(f"Pipeline Error: {e}")

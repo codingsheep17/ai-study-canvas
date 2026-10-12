@@ -130,11 +130,10 @@ class State(rx.State):
             self.loading_text = "Rendering flowchart diagram... (Almost done!)"
             yield
             await asyncio.sleep(0.1)
-            
-            # Generate the perfectly formatted flowchart
-            raw_path = generate_image(report.image_prompt)
-            filename = os.path.basename(raw_path)
-            self.rendered_img = f"/{filename}"
+
+            # Generate the flowchart and get the unique dynamic filename
+            new_filename = generate_image(report.image_prompt)
+            self.rendered_img = f"/{new_filename}"
 
         except Exception as e:
             print(f"Pipeline Error: {e}")

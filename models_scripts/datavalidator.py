@@ -46,7 +46,11 @@ def extract_text(file_path: str, file_name: str) -> str:
             ]
             
             # Models listed in priority order: latest 3.8-flash first, then 2.5-flash fallback
-            models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash"]
+            models_to_try = [
+                "gemini-3.8-flash",
+                "gemini-2.5-flash",
+                "gemini-1.5-flash"
+            ]
             
             success = False
             for key in gemini_keys:

@@ -40,68 +40,72 @@ Instructions:
     
     user_payload = f"Target Level: {difficulty_level}\nSource Data:\n{extracted_text}"
 
+    # Expanded cascade for 2026 free-tier models, plus your GROQ fix
     api_configs = [
-        {"provider": "gemini", "key": os.getenv("MY_GEMINI_KEY"), "model": "gemini-3.8-flash"},
-        {"provider": "gemini", "key": os.getenv("GEMINI_KEY"), "model": "gemini-3.8-flash"},
-        {"provider": "gemini", "key": os.getenv("ANSA_GEMINI_KEY"), "model": "gemini-3.8-flash"},
-        {"provider": "groq", "key": os.getenv("MY_GROQ_KEY"), "model": "llama-3.1-8b-instant"},
-        {"provider": "groq", "key": os.getenv("GROQ_KEY"), "model": "llama-3.1-8b-instant"},
-        {"provider": "groq", "key": os.getenv("AMINA_GROK_KEY"), "model": "llama-3.1-8b-instant"},
+        {"provider": "gemini", "key": os.getenv("MY_GEMINI_KEY"), "models": ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]},
+        {"provider": "gemini", "key": os.getenv("GEMINI_KEY"), "models": ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]},
+        {"provider": "gemini", "key": os.getenv("ANSA_GEMINI_KEY"), "models": ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]},
+        {"provider": "groq", "key": os.getenv("MY_GROQ_KEY"), "models": ["llama-3.1-8b-instant"]},
+        {"provider": "groq", "key": os.getenv("GROQ_KEY"), "models": ["llama-3.1-8b-instant"]},
+        {"provider": "groq", "key": os.getenv("AMINA_GROQ_KEY"), "models": ["llama-3.1-8b-instant"]},
     ]
+
+    last_error_message = "No specific error captured."
 
     for config in api_configs:
         if not config["key"]:
             continue
             
-        try:
-            msg = f"Connecting to {config['provider'].capitalize()}... (This will take a little bit)"
-            print(f"[STEP 2 TRYING] {msg}")
-            yield {"status": msg}
+        for model_name in config["models"]:
+            try:
+                msg = f"Connecting to {config['provider'].capitalize()} ({model_name})..."
+                print(f"[STEP 2 TRYING] {msg}")
+                yield {"status": msg}
 
-            if config["provider"] == "gemini":
-                client = genai.Client(api_key=config["key"])
-                response = client.models.generate_content(
-                    model=config["model"],
-                    contents=user_payload,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
+                if config["provider"] == "gemini":
+                    client = genai.Client(api_key=config["key"])
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=user_payload,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_PROMPT,
+                            temperature=0.2,
+                            response_mime_type="application/json",
+                            response_schema=AnalysisReport,
+                        ),
+                    )
+                    raw_json = response.text
+
+                elif config["provider"] == "groq":
+                    groq_client = Groq(api_key=config["key"])
+                    completion = groq_client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": user_payload},
+                        ],
                         temperature=0.2,
-                        response_mime_type="application/json",
-                        response_schema=AnalysisReport,
-                    ),
-                )
-                raw_json = response.text
-
-            elif config["provider"] == "groq":
-                groq_client = Groq(api_key=config["key"])
-                completion = groq_client.chat.completions.create(
-                    model=config["model"],
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": user_payload},
-                    ],
-                    temperature=0.2,
-                    response_format={
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": "analysis_report",
-                            "strict": True,
-                            "schema": AnalysisReport.model_json_schema(),
+                        response_format={
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "analysis_report",
+                                "strict": True,
+                                "schema": AnalysisReport.model_json_schema(),
+                            },
                         },
-                    },
-                )
-                raw_json = completion.choices[0].message.content
+                    )
+                    raw_json = completion.choices[0].message.content
 
-            # API Success
-            success_msg = f"Resolved via {config['provider'].capitalize()}! Generating notes..."
-            print(f"[STEP 2 SUCCESS] {success_msg}")
-            yield {"status": success_msg}
-            
-            yield {"result": AnalysisReport.model_validate_json(raw_json)}
-            return
+                success_msg = f"Resolved via {config['provider'].capitalize()}! Generating notes..."
+                print(f"[STEP 2 SUCCESS] {success_msg}")
+                yield {"status": success_msg}
+                yield {"result": AnalysisReport.model_validate_json(raw_json)}
+                return
 
-        except Exception as e:
-            print(f"[STEP 2 WARNING] {config['provider']} ({config['model']}) failed: {e}")
-            continue
+            except Exception as e:
+                last_error_message = f"{config['provider']} ({model_name}) error: {str(e)}"
+                print(f"[STEP 2 WARNING] {last_error_message}")
+                continue
     
-    raise ValueError("All API keys and fallback pipelines failed to generate a response.")
+    # If it completely fails, this will now spit the exact raw error out to the red text on your UI
+    raise ValueError(f"All API keys failed. Last captured error: {last_error_message}")
